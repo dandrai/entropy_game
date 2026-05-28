@@ -183,7 +183,10 @@ async def next_word(session_id: str):
             "SELECT COUNT(*) FROM word_results WHERE session_id = ?", (session_id,)
         )).fetchone())[0]
 
-        if words_done >= game.words_per_session:
+        mode = session.get("mode") or "random"
+
+        # In sequential mode the user decides when to stop; only cap random sessions.
+        if mode != "sequential" and words_done >= game.words_per_session:
             score = await _session_score(db, session_id)
             return {"session_complete": True, "score": score, "words_done": words_done}
 
@@ -202,15 +205,13 @@ async def next_word(session_id: str):
                 "attempt_num": len(attempts) + 1,
                 "max_attempts": game.max_attempts,
                 "words_done": words_done,
-                "words_total": game.words_per_session,
+                "words_total": None,
                 "attempts_history": [
                     {"attempt_num": a["attempt_num"], "guess": a["guess"], "correct": bool(a["correct"])}
                     for a in attempts
                 ],
             }
 
-        # Advance to next word
-        mode = session.get("mode") or "random"
         chain_word_idx = session.get("chain_word_idx")
 
         if mode == "sequential" and chain_word_idx is not None:
@@ -242,7 +243,7 @@ async def next_word(session_id: str):
             "attempt_num": 1,
             "max_attempts": game.max_attempts,
             "words_done": words_done,
-            "words_total": game.words_per_session,
+            "words_total": None if mode == "sequential" else game.words_per_session,
             "attempts_history": [],
         }
 

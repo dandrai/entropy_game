@@ -262,6 +262,15 @@ hr.rule-light {
   font-style: normal;
 }
 
+.revealed-word {
+  font-family: var(--mono);
+  color: var(--accent);
+  font-weight: bold;
+  border-bottom: 2px solid var(--accent);
+  background: rgba(120, 90, 40, 0.10);
+  padding: 0 0.15em;
+}
+
 /* ── Game — Attempts ────────────────────────────────────────────────────── */
 
 .attempts-list {
@@ -819,7 +828,7 @@ function renderGameScreen() {
   const playerPrefix = S.username ? S.username + '\u2002·\u2002' : '';
   document.getElementById('game-progress').textContent =
     playerPrefix + (LANG.ui.word_counter || 'Word') + '\u202F' +
-    (S.words_done + 1) + '\u202F/\u202F' + S.words_total;
+    (S.words_done + 1) + (S.words_total ? '\u202F/\u202F' + S.words_total : '');
 
   // Context
   const ctx = document.getElementById('context-block');
@@ -892,6 +901,12 @@ document.getElementById('guess-form').addEventListener('submit', async e => {
         g_value: data.g_value,
         attempts: S.attempts_this_word.slice(),
       });
+      // Reveal the word in the context block
+      const blank = document.querySelector('#context-block .hidden-word');
+      if (blank) {
+        blank.textContent = data.target_word;
+        blank.className = 'revealed-word';
+      }
       showResolutionBanner(data);
       S.attempts_this_word = [];
       // Refresh stats panel if open
