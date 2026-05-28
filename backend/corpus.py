@@ -203,24 +203,41 @@ def next_sequential_word(
     corpus_id: str, current_word_idx: int
 ) -> Optional[tuple[int, int, str, str]]:
     """
-    Advance to the next Cyrillic word after current_word_idx.
+    Advance to the next eligible word after current_word_idx.
+    Applies the same per-language eligibility rules as _get_eligible_indices.
     Returns (new_word_idx, char_pos, context_text, target_word) or None if text exhausted.
     """
     game, _ = load_config()
+    corpus = get_corpus_config(corpus_id)
     text = _load_text(corpus_id)
     spans = _get_word_spans(corpus_id)
     max_char = len(text) - 50
 
     idx = current_word_idx + 1
     while idx < len(spans) and spans[idx][0] <= max_char:
-        if idx >= game.context_words:
-            start, end = spans[idx]
-            word = text[start:end]
-            if _CYRILLIC_WORD.match(word):
-                context_start = spans[idx - game.context_words][0]
-                context = text[context_start:start].rstrip()
-                return idx, start, context, word
-        idx += 1
+        if idx < game.context_words:
+            idx += 1
+            continue
+        start, end = spans[idx]
+        word = text[start:end]
+        if corpus.lang == 'ru':
+            if not _CYRILLIC_WORD.match(word):
+                idx += 1
+                continue
+        else:
+            if len(word) < 2:
+                idx += 1
+                continue
+        # Skip sentence-start words
+        pos = start - 1
+        while pos >= 0 and text[pos] in ' \t\n\r':
+            pos -= 1
+        if pos >= 0 and text[pos] in '.!?\u2026':
+            idx += 1
+            continue
+        context_start = spans[idx - game.context_words][0]
+        context = text[context_start:start].rstrip()
+        return idx, start, context, word
     return None
 
 
