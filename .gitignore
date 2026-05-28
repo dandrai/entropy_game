@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Database (contains user data)
+data/entropy_game.db
+
+# Copyrighted EPUB sources — do not redistribute
+data/fr/*.epub
+
+# Copyrighted derived texts — do not redistribute
+data/fr/houellebecq_possibilite_ile.txt
+data/fr/levy_et_si_cetait_vrai.txt
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/

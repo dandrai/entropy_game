@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="ru" id="html-root">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Энтропия — Угадайте слово</title>
+<style>
+:root {
+  --paper:  #F4F1E8;
+  --ink:    #1C1C1C;
+  --accent: #7A1519;
+  --muted:  #777;
+  --border: #C8C4B4;
+  --serif:  Georgia, "Times New Roman", serif;
+  --mono:   "Courier New", Courier, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+
+h1 {
+  font-size: 1.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: bold;
+}
+
+.site-subtitle {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-style: italic;
+  margin-top: 0.2rem;
+}
+
+h2.section-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: normal;
+  margin-bottom: 0.75rem;
+}
+
+hr.rule {
+  border: none;
+  border-top: 1px solid var(--ink);
+  margin: 1.4rem 0;
+}
+
+hr.rule-light {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1rem 0;
+}
+
+/* ── Lang selector ──────────────────────────────────────────────────────── */
+
+.lang-selector { display: flex; gap: 0.35rem; }
+
+.btn-lang {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 0.12rem 0.45rem;
+  cursor: pointer;
+}
+.btn-lang:hover  { border-color: var(--ink); color: var(--ink); }
+.btn-lang.active { border-color: var(--ink); color: var(--ink); font-weight: bold; }
+
+/* ── Home — Player bar ──────────────────────────────────────────────────── */
+
+.player-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.8rem;
+  font-size: 0.85rem;
+}
+
+.player-name {
+  font-family: var(--mono);
+  color: var(--ink);
+}
+
+.login-form {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.login-form input {
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  border: none;
+  border-bottom: 2px solid var(--ink);
+  background: transparent;
+  padding: 0.15rem 0.3rem;
+  outline: none;
+  width: 200px;
+}
+.login-form input:focus { border-bottom-color: var(--accent); }
+
+.login-form input:focus { border-bottom-color: var(--accent); }
+
+/* ── Home — Mode selector ───────────────────────────────────────────────── */
+
+.mode-selector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.btn-mode {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  background: transparent;
+  color: var(--ink);
+}
+
+.btn-mode.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+/* ── Home — Intro ───────────────────────────────────────────────────────── */
+
+.intro {
+  font-size: 0.93rem;
+  color: #333;
+  max-width: 640px;
+}
+
+.intro p { margin-bottom: 0.75rem; }
+
+.intro p:last-child { margin-bottom: 0; }
+
+/* ── Home — Corpus list ─────────────────────────────────────────────────── */
+
+.corpus-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.corpus-table tr {
+  border-bottom: 1px solid var(--border);
+}
+
+.corpus-table tr:first-child {
+  border-top: 1px solid var(--ink);
+}
+
+.corpus-table td {
+  padding: 0.7rem 0.5rem;
+  vertical-align: middle;
+}
+
+.col-author { font-weight: bold; white-space: nowrap; width: 160px; }
+.col-title  { font-style: italic; }
+.col-lang   {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  width: 40px;
+  text-align: center;
+}
+.col-diff   {
+  color: var(--accent);
+  font-size: 0.8rem;
+  width: 80px;
+  white-space: nowrap;
+}
+.col-btn    { width: 90px; text-align: right; }
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+.btn {
+  font-family: var(--serif);
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.3rem 0.9rem;
+  cursor: pointer;
+}
+.btn:hover { background: var(--accent); border-color: var(--accent); }
+.btn:disabled {
+  background: transparent;
+  color: var(--border);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+}
+.btn-ghost:hover { background: var(--ink); color: var(--paper); }
+
+/* ── Game — Header ──────────────────────────────────────────────────────── */
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.game-corpus-info {
+  font-size: 0.82rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.game-progress {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* ── Game — Context block ───────────────────────────────────────────────── */
+
+.context-block {
+  background: #EDEADB;
+  border-left: 3px solid var(--accent);
+  padding: 1.2rem 1.5rem;
+  font-size: 0.93rem;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.hidden-word {
+  font-family: var(--mono);
+  color: var(--accent);
+  font-weight: bold;
+  border-bottom: 2px solid var(--accent);
+  padding: 0 0.15em;
+  font-style: normal;
+}
+
+/* ── Game — Attempts ────────────────────────────────────────────────────── */
+
+.attempts-list {
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  min-height: 1.5rem;
+}
+
+.attempt-row {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.18rem 0;
+  color: var(--muted);
+}
+
+.attempt-row.is-correct { color: var(--ink); }
+
+.attempt-num  { min-width: 1.5rem; text-align: right; color: var(--muted); }
+.attempt-text { flex: 1; font-style: italic; }
+.attempt-mark { min-width: 1rem; }
+.mark-ok   { color: #2E7D32; }
+.mark-fail { color: var(--accent); }
+
+/* ── Game — Input area ──────────────────────────────────────────────────── */
+
+.input-area {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.8rem 0;
+}
+
+.attempt-label {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 100px;
+}
+
+#guess-input {
+  font-family: var(--serif);
+  font-size: 1rem;
+  border: none;
+  border-bottom: 2px solid var(--ink);
+  background: transparent;
+  padding: 0.15rem 0.3rem;
+  outline: none;
+  width: 220px;
+}
+
+#guess-input:focus { border-bottom-color: var(--accent); }
+#guess-input:disabled { border-bottom-color: var(--border); }
+
+.btn-arrow {
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ink);
+  padding: 0 0.3rem;
+}
+.btn-arrow:hover { color: var(--accent); }
+.btn-arrow:disabled { color: var(--border); cursor: default; }
+
+/* ── Stats toggle ───────────────────────────────────────────────────────── */
+
+.btn-stats {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 0.1rem 0.5rem;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+}
+.btn-stats:hover { border-color: var(--ink); color: var(--ink); }
+
+.game-stats-panel {
+  background: #EDEADB;
+  border-left: 3px solid var(--border);
+  padding: 0.8rem 1.2rem;
+  margin: 0.6rem 0;
+  font-size: 0.84rem;
+}
+
+.stats-entropy {
+  font-family: var(--mono);
+  margin-bottom: 0.25rem;
+  color: var(--ink);
+}
+
+.stats-ref {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 0.1rem;
+}
+
+.stats-bias {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.stats-dist-table {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+.stats-dist-table td { padding: 0.1rem 0.5rem 0.1rem 0; vertical-align: middle; }
+.sd-label { color: var(--muted); min-width: 4rem; }
+.sd-bar   { color: var(--accent); letter-spacing: -0.05em; min-width: 12rem; }
+.sd-count { text-align: right; min-width: 2rem; }
+.sd-pct   { color: var(--muted); min-width: 3rem; text-align: right; }
+
+/* ── Word resolved banner ───────────────────────────────────────────────── */
+
+.word-resolved-banner {
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  padding: 0.5rem 0;
+}
+
+.resolved-ok   { color: #2E7D32; }
+.resolved-fail { color: var(--accent); }
+
+/* ── Results ────────────────────────────────────────────────────────────── */
+
+.score-display {
+  font-family: var(--mono);
+  font-size: 1.15rem;
+  margin: 0.5rem 0 1.5rem;
+}
+
+.score-val { color: var(--accent); font-size: 1.4rem; }
+
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  margin-bottom: 1rem;
+}
+
+table.data-table th {
+  text-align: left;
+  border-bottom: 1px solid var(--ink);
+  padding: 0.25rem 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: normal;
+}
+
+table.data-table td {
+  padding: 0.22rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.td-mono  { font-family: var(--mono); }
+.td-right { text-align: right; }
+.td-score { font-family: var(--mono); color: var(--accent); }
+.td-total {
+  font-family: var(--mono);
+  border-top: 1px solid var(--ink);
+  border-bottom: none;
+  padding-top: 0.4rem;
+}
+
+.lb-note {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-style: italic;
+  padding: 0.5rem 0.4rem;
+}
+
+/* ── Utility ────────────────────────────────────────────────────────────── */
+
+.hidden { display: none !important; }
+
+.loading {
+  font-style: italic;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.error-msg {
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-family: var(--mono);
+  margin: 0.5rem 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════ HOME ══════════════════════════════════ -->
+<div id="screen-home" class="screen container">
+
+  <header style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <h1 id="site-title" data-i18n="title">Энтропия</h1>
+      <p class="site-subtitle" id="site-subtitle" data-i18n="subtitle">
+        Угадайте следующее слово текста — эксперимент Колмогорова, 1965</p>
+    </div>
+    <div class="lang-selector" style="margin-top:0.4rem">
+      <button id="btn-lang-ru" class="btn-lang active" onclick="setLang('ru')">РУС</button>
+      <button id="btn-lang-en" class="btn-lang" onclick="setLang('en')">ENG</button>
+      <button id="btn-lang-fr" class="btn-lang" onclick="setLang('fr')">FR</button>
+    </div>
+  </header>
+
+  <hr class="rule">
+
+  <h2 class="section-label" data-i18n="player_section">Игрок</h2>
+  <div class="player-bar">
+    <span id="player-name" class="player-name hidden"></span>
+    <form id="login-form" class="login-form" onsubmit="submitLogin(event)">
+      <input id="login-input" type="text" data-i18n-placeholder="enter_name"
+             placeholder="Введите псевдоним…" maxlength="40"
+             autocomplete="off" spellcheck="false">
+      <button class="btn" type="submit" data-i18n="sign_in">Войти →</button>
+    </form>
+    <button id="btn-login-toggle" class="btn btn-ghost hidden"
+            onclick="toggleLoginForm()" data-i18n="change">Сменить</button>
+  </div>
+
+  <hr class="rule">
+
+  <div id="intro" class="intro"></div>
+
+  <hr class="rule">
+
+  <h2 class="section-label" data-i18n="mode_section">Режим</h2>
+  <div class="mode-selector">
+    <button id="btn-mode-random" class="btn btn-mode active"
+            onclick="setMode('random')" data-i18n="mode_random">Случайные слова</button>
+    <button id="btn-mode-seq" class="btn btn-mode"
+            onclick="setMode('sequential')" data-i18n="mode_seq">≡&nbsp;Последовательно</button>
+  </div>
+
+  <h2 class="section-label" data-i18n="corpus_section">Выберите корпус</h2>
+  <div id="corpus-list"><p class="loading">Загрузка…</p></div>
+  <div id="home-error" class="error-msg hidden"></div>
+
+</div>
+
+<!-- ══════════════════════════════ GAME ══════════════════════════════════ -->
+<div id="screen-game" class="screen container hidden">
+
+  <div class="game-header">
+    <span id="game-corpus-info" class="game-corpus-info"></span>
+    <span style="display:flex;align-items:baseline;gap:0.8rem">
+      <span id="game-progress" class="game-progress"></span>
+      <button id="btn-stats" class="btn-stats" onclick="toggleStats()">Σ</button>
+    </span>
+  </div>
+  <div id="game-stats-panel" class="game-stats-panel hidden"></div>
+  <hr class="rule">
+
+  <div id="context-block" class="context-block"></div>
+
+  <hr class="rule-light">
+
+  <div id="attempts-list" class="attempts-list"></div>
+
+  <form id="guess-form" class="input-area">
+    <span id="attempt-label" class="attempt-label"></span>
+    <input id="guess-input" type="text" autocomplete="off" spellcheck="false"
+           placeholder="введите слово…">
+    <button id="btn-submit" class="btn-arrow" type="submit">→</button>
+  </form>
+
+  <div id="word-resolved-banner" class="word-resolved-banner hidden"></div>
+  <div id="game-error" class="error-msg hidden"></div>
+
+</div>
+
+<!-- ══════════════════════════════ RESULTS ═══════════════════════════════ -->
+<div id="screen-results" class="screen container hidden">
+
+  <h2 class="section-label" data-i18n="results_title">Результаты сессии</h2>
+  <hr class="rule">
+
+  <div id="session-score" class="score-display"></div>
+  <div id="results-stats" class="game-stats-panel" style="margin-bottom:1.2rem"></div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th data-i18n="col_num">#</th>
+        <th data-i18n="col_word">Слово</th>
+        <th style="text-align:right" data-i18n="col_attempts">Попытки</th>
+        <th style="text-align:right">G</th>
+        <th style="text-align:right">log₂G</th>
+      </tr>
+    </thead>
+    <tbody id="words-tbody"></tbody>
+  </table>
+
+  <hr class="rule">
+  <h2 class="section-label" data-i18n="leaderboard_title">Таблица лидеров</h2>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th data-i18n="col_num">#</th>
+        <th data-i18n="col_player">Игрок</th>
+        <th style="text-align:right" data-i18n="col_score">Счёт</th>
+        <th style="text-align:right" data-i18n="col_words_played">Слов</th>
+      </tr>
+    </thead>
+    <tbody id="leaderboard-tbody"></tbody>
+  </table>
+
+  <div style="margin-top:1.5rem;display:flex;gap:0.8rem;flex-wrap:wrap">
+    <button id="btn-replay" class="btn" style="display:none"
+            onclick="replayCorpus()">Новая последовательность →</button>
+    <button id="btn-new-game" class="btn btn-ghost" data-i18n="new_game_btn">← Новая игра</button>
+  </div>
+
+</div>
+
+<script>
+// ── i18n ───────────────────────────────────────────────────────────────────
+let LANG = { ui: {} };
+let currentLang = 'ru';
+
+async function loadI18n(lang) {
+  const res = await fetch(`/i18n/${lang}.json`);
+  LANG = await res.json();
+  currentLang = lang;
+  document.getElementById('html-root').lang = lang;
+  document.title = LANG.title;
+  applyStrings();
+  ['ru', 'en', 'fr'].forEach(l =>
+    document.getElementById(`btn-lang-${l}`).classList.toggle('active', l === lang)
+  );
+}
+
+function applyStrings() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = LANG.ui[el.getAttribute('data-i18n')];
+    if (v !== undefined) el.textContent = v;
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const v = LANG.ui[el.getAttribute('data-i18n-placeholder')];
+    if (v !== undefined) el.placeholder = v;
+  });
+  const intro = document.getElementById('intro');
+  if (intro && LANG.intro) intro.innerHTML = LANG.intro;
+}
+
+async function setLang(lang) {
+  localStorage.setItem('entropy_lang', lang);
+  await loadI18n(lang);
+  loadHome();
+}
+
+// ── State ──────────────────────────────────────────────────────────────────
+const S = {
+  session_id: null,
+  corpus: null,
+  mode: 'random',
+  username: null,
+  context: null,
+  attempt_num: 1,
+  max_attempts: 5,
+  words_done: 0,
+  words_total: 10,
+  attempts_this_word: [],   // {attempt_num, guess, correct}
+  words_history: [],        // {target_word, g_value, attempts:[]}
+};
+
+// ── Screens ────────────────────────────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+  document.getElementById('screen-' + name).classList.remove('hidden');
+  window.scrollTo(0, 0);
+}
+
+// ── User identity ──────────────────────────────────────────────────────────
+async function loadMe() {
+  try {
+    const res = await fetch('/me');
+    const data = await res.json();
+    if (data.username) {
+      S.username = data.username;
+      updatePlayerBar();
+    }
+  } catch (_) {}
+}
+
+function updatePlayerBar() {
+  const nameEl = document.getElementById('player-name');
+  const form = document.getElementById('login-form');
+  const changeBtn = document.getElementById('btn-login-toggle');
+  if (S.username) {
+    nameEl.textContent = S.username;
+    nameEl.classList.remove('hidden');
+    form.classList.add('hidden');
+    changeBtn.classList.remove('hidden');
+  } else {
+    nameEl.classList.add('hidden');
+    form.classList.remove('hidden');
+    changeBtn.classList.add('hidden');
+  }
+}
+
+function toggleLoginForm() {
+  const form = document.getElementById('login-form');
+  form.classList.remove('hidden');
+  document.getElementById('btn-login-toggle').classList.add('hidden');
+  document.getElementById('login-input').focus();
+}
+
+async function submitLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('login-input').value.trim();
+  if (!username) return;
+  try {
+    const res = await fetch('/user', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username}),
+    });
+    if (!res.ok) { show('home-error', LANG.ui.err_login || 'Login error'); return; }
+    const data = await res.json();
+    S.username = data.username;
+    updatePlayerBar();
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('login-input').value = '';
+    hide('home-error');
+  } catch (_) { show('home-error', LANG.ui.err_login || 'Login error'); }
+}
+
+// ── Mode selector ──────────────────────────────────────────────────────────
+function setMode(mode) {
+  S.mode = mode;
+  document.getElementById('btn-mode-random').classList.toggle('active', mode === 'random');
+  document.getElementById('btn-mode-seq').classList.toggle('active', mode === 'sequential');
+}
+
+// ── Home ───────────────────────────────────────────────────────────────────
+async function loadHome() {
+  showScreen('home');
+  document.getElementById('corpus-list').innerHTML =
+    `<p class="loading">${LANG.ui.loading || 'Loading…'}</p>`;
+  try {
+    const res = await fetch('/corpora');
+    if (!res.ok) throw new Error('server error');
+    const corpora = await res.json();
+    renderCorpusList(corpora.filter(c => c.lang === currentLang));
+  } catch (e) {
+    show('home-error', (LANG.ui.err_corpora || 'Error: ') + e.message);
+  }
+}
+
+function renderCorpusList(corpora) {
+  const avail = corpora.filter(c => c.available);
+  const unavail = corpora.filter(c => !c.available);
+  const ordered = [...avail, ...unavail];
+
+  const table = document.createElement('table');
+  table.className = 'corpus-table';
+
+  ordered.forEach(c => {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td class="col-author">${esc(c.author)}</td>` +
+      `<td class="col-title">${esc(c.title)}</td>` +
+      `<td class="col-lang">${esc(c.lang.toUpperCase())}</td>` +
+      `<td class="col-diff">${esc(c.difficulty)}</td>` +
+      `<td class="col-btn"></td>`;
+
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    if (c.available) {
+      btn.textContent = LANG.ui.start || 'Play';
+      btn.onclick = () => startSession(c.id);
+    } else {
+      btn.textContent = LANG.ui.unavailable || '—';
+      btn.disabled = true;
+    }
+    tr.querySelector('.col-btn').appendChild(btn);
+    table.appendChild(tr);
+  });
+
+  const container = document.getElementById('corpus-list');
+  container.innerHTML = '';
+  container.appendChild(table);
+}
+
+// ── Session ────────────────────────────────────────────────────────────────
+async function startSession(corpus_id) {
+  hide('home-error');
+  try {
+    const res = await fetch('/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ corpus_id, mode: S.mode }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      show('home-error', err.detail || LANG.ui.err_session);
+      return;
+    }
+    const data = await res.json();
+    S.session_id = data.session_id;
+    S.corpus = data.corpus;
+    S.mode = data.mode || 'random';
+    S.words_history = [];
+    showScreen('game');
+    await loadNextWord();
+  } catch (e) {
+    show('home-error', (LANG.ui.err_generic || 'Error: ') + e.message);
+  }
+}
+
+// ── Game loop ──────────────────────────────────────────────────────────────
+async function loadNextWord() {
+  hide('game-error');
+  hide('word-resolved-banner');
+  setInputEnabled(false);
+
+  try {
+    const res = await fetch('/next?session_id=' + S.session_id);
+    if (!res.ok) throw new Error((await res.json()).detail);
+    const data = await res.json();
+
+    if (data.session_complete) {
+      S.session_score = data.score;
+      showResults();
+      return;
+    }
+
+    S.context       = data.context;
+    S.attempt_num   = data.attempt_num;
+    S.max_attempts  = data.max_attempts;
+    S.words_done    = data.words_done;
+    S.words_total   = data.words_total;
+    S.attempts_this_word = data.attempts_history || [];
+
+    renderGameScreen();
+    setInputEnabled(true);
+    document.getElementById('guess-input').focus();
+  } catch (e) {
+    show('game-error', (LANG.ui.err_generic || 'Error: ') + e.message);
+  }
+}
+
+function renderGameScreen() {
+  // Header
+  const corpusLabel = (S.corpus.author + ' — ' + S.corpus.title).toUpperCase();
+  const modeTag = S.mode === 'sequential' ? '\u202F≡' : '';
+  document.getElementById('game-corpus-info').textContent = corpusLabel + modeTag;
+  const playerPrefix = S.username ? S.username + '\u2002·\u2002' : '';
+  document.getElementById('game-progress').textContent =
+    playerPrefix + (LANG.ui.word_counter || 'Word') + '\u202F' +
+    (S.words_done + 1) + '\u202F/\u202F' + S.words_total;
+
+  // Context
+  const ctx = document.getElementById('context-block');
+  ctx.textContent = '';
+  ctx.appendChild(document.createTextNode(S.context + ' '));
+  const blank = document.createElement('span');
+  blank.className = 'hidden-word';
+  blank.textContent = '\u00B7\u00B7\u00B7\u00B7\u00B7';  // ·····
+  ctx.appendChild(blank);
+  // Scroll to end so hidden word is visible
+  ctx.scrollTop = ctx.scrollHeight;
+
+  // Attempts
+  renderAttempts();
+
+  // Input label
+  document.getElementById('attempt-label').textContent =
+    (LANG.ui.attempt_label || 'Attempt') + '\u00A0' + S.attempt_num + '\u202F/\u202F' + S.max_attempts + ':';
+  document.getElementById('guess-input').placeholder = LANG.ui.enter_word || '';
+  document.getElementById('guess-input').value = '';
+}
+
+function renderAttempts() {
+  const list = document.getElementById('attempts-list');
+  list.innerHTML = '';
+  S.attempts_this_word.forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'attempt-row' + (a.correct ? ' is-correct' : '');
+    row.innerHTML =
+      `<span class="attempt-num">${a.attempt_num}.</span>` +
+      `<span class="attempt-text">${esc(a.guess)}</span>` +
+      `<span class="attempt-mark ${a.correct ? 'mark-ok' : 'mark-fail'}">` +
+        (a.correct ? '✓' : '✗') +
+      `</span>`;
+    list.appendChild(row);
+  });
+}
+
+// ── Guess submission ───────────────────────────────────────────────────────
+document.getElementById('guess-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const input = document.getElementById('guess-input');
+  const guess = input.value.trim();
+  if (!guess) return;
+
+  setInputEnabled(false);
+  hide('game-error');
+
+  try {
+    const res = await fetch('/guess', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: S.session_id, guess }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail);
+    const data = await res.json();
+
+    S.attempts_this_word.push({
+      attempt_num: data.attempt_num,
+      guess,
+      correct: data.correct,
+    });
+    S.attempt_num = data.attempt_num + 1;
+
+    renderAttempts();
+
+    if (data.word_resolved) {
+      S.words_history.push({
+        target_word: data.target_word,
+        g_value: data.g_value,
+        attempts: S.attempts_this_word.slice(),
+      });
+      showResolutionBanner(data);
+      S.attempts_this_word = [];
+      // Refresh stats panel if open
+      const statsPanel = document.getElementById('game-stats-panel');
+      if (!statsPanel.classList.contains('hidden')) renderStatsPanel();
+      if (data.correct) {
+        setTimeout(loadNextWord, 1400);
+      }
+      // on failure: user must click the button in the banner
+    } else {
+      document.getElementById('attempt-label').textContent =
+        (LANG.ui.attempt_label || 'Attempt') + '\u00A0' + S.attempt_num + '\u202F/\u202F' + S.max_attempts + ':';
+      input.value = '';
+      setInputEnabled(true);
+      input.focus();
+    }
+  } catch (e) {
+    show('game-error', (LANG.ui.err_generic || 'Error: ') + e.message);
+    setInputEnabled(true);
+  }
+});
+
+function showResolutionBanner(data) {
+  const banner = document.getElementById('word-resolved-banner');
+  if (data.correct) {
+    banner.innerHTML =
+      `<span class="resolved-ok">✓ ${LANG.ui.correct || 'Correct —'} G\u202F=\u202F${data.g_value}, ` +
+      `log₂G\u202F=\u202F${Math.log2(data.g_value).toFixed(3)} ${LANG.ui.bits || 'bits'}</span>`;
+  } else {
+    banner.innerHTML =
+      `<span class="resolved-fail">✗ ${LANG.ui.fail_word || 'Word:'} <strong>${esc(data.target_word)}</strong>` +
+      ` — G\u202F=\u202F${data.g_value}</span>` +
+      `<button id="btn-next-word" class="btn" style="margin-left:1.2rem">` +
+      `${LANG.ui.next_word_btn || 'Next →'}</button>`;
+    banner.querySelector('#btn-next-word').addEventListener('click', () => {
+      banner.classList.add('hidden');
+      loadNextWord();
+    });
+  }
+  banner.classList.remove('hidden');
+}
+
+function setInputEnabled(enabled) {
+  document.getElementById('guess-input').disabled = !enabled;
+  document.getElementById('btn-submit').disabled = !enabled;
+}
+
+// ── Session stats panel ────────────────────────────────────────────────────
+function toggleStats() {
+  const panel = document.getElementById('game-stats-panel');
+  if (panel.classList.contains('hidden')) {
+    renderStatsPanel();
+    panel.classList.remove('hidden');
+  } else {
+    panel.classList.add('hidden');
+  }
+}
+
+function renderStatsPanel() {
+  const panel = document.getElementById('game-stats-panel');
+  if (!S.words_history.length) {
+    panel.innerHTML = `<span style="color:var(--muted);font-style:italic">${LANG.ui.no_stats || 'No data yet.'}</span>`;
+    return;
+  }
+  panel.innerHTML = buildStatsHTML(S.words_history);
+}
+
+function buildStatsHTML(history) {
+  const gs = history.map(w => w.g_value);
+  const entropy = gs.reduce((s, g) => s + Math.log2(g), 0) / gs.length;
+
+  // Per-character entropy: divide by mean word length + 1 (space)
+  const meanCharPerWord = history.reduce((s, w) => s + (w.target_word ? w.target_word.length + 1 : 6), 0) / gs.length;
+  const entropyChar = entropy / meanCharPerWord;
+
+  const dist = {};
+  for (let g = 1; g <= 6; g++) dist[g] = gs.filter(v => v === g).length;
+  const maxCount = Math.max(...Object.values(dist), 1);
+  const hasCap = dist[6] > 0;
+
+  let html = `<div class="stats-entropy">`;
+  html += `H\u0303\u202F\u2248\u202F<strong>${entropy.toFixed(3)}</strong>\u2002${LANG.ui.bits_word || 'bits/word'}`;
+  html += `\u2002\u00B7\u2002<strong>${entropyChar.toFixed(3)}</strong>\u2002${LANG.ui.bits_char || 'bits/char'}`;
+  html += `\u2002\u00B7\u2002${gs.length}\u202F${LANG.ui.words_count || 'words'}</div>`;
+  html += `<div class="stats-ref">${LANG.ui.kolmogorov_ref || 'Kolmogorov (1965): 0.9–1.4 bits/char'}`;
+  if (hasCap) html += `\u2002<span class="stats-bias">[G\u202F\u2264\u202F6 \u2192 ${LANG.ui.lower_bound_note || 'lower bound'}]</span>`;
+  html += `</div>`;
+
+  html += '<table class="stats-dist-table" style="margin-top:0.6rem">';
+  for (let g = 1; g <= 6; g++) {
+    const count = dist[g];
+    const pct = gs.length ? Math.round(count / gs.length * 100) : 0;
+    const barLen = Math.round(count / maxCount * 18);
+    const bar = barLen > 0 ? '\u2588'.repeat(barLen) : '\u00B7';
+    const label = g === 6 ? (LANG.ui.g_fail_label || '\u2717\u202FG\u202F=\u202F6') : `G\u202F=\u202F${g}`;
+    html += `<tr><td class="sd-label">${label}</td><td class="sd-bar">${bar}</td>` +
+            `<td class="sd-count">${count}</td><td class="sd-pct">${pct}\u202F%</td></tr>`;
+  }
+  html += '</table>';
+  return html;
+}
+
+// ── Results ────────────────────────────────────────────────────────────────
+async function showResults() {
+  showScreen('results');
+
+  // Session score + distribution
+  const scoreEl = document.getElementById('session-score');
+  scoreEl.innerHTML =
+    `H\u0303\u202F\u2248\u202F<span class="score-val">${(S.session_score || 0).toFixed(3)}</span>` +
+    `\u2002${LANG.ui.bits_word || 'bits/word'}\u2002·\u2002${LANG.ui.upper_bound_label || 'upper bound on entropy'}`;
+
+  const statsEl = document.getElementById('results-stats');
+  statsEl.innerHTML = S.words_history.length ? buildStatsHTML(S.words_history) : '';
+
+  // Words table
+  const tbody = document.getElementById('words-tbody');
+  tbody.innerHTML = '';
+  let total = 0;
+  S.words_history.forEach((w, i) => {
+    const log2g = Math.log2(w.g_value);
+    total += log2g;
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td class="td-mono">${i + 1}</td>` +
+      `<td><em>${esc(w.target_word)}</em></td>` +
+      `<td class="td-mono td-right">${w.attempts.length}</td>` +
+      `<td class="td-mono td-right">${w.g_value}</td>` +
+      `<td class="td-score td-right">${log2g.toFixed(3)}</td>`;
+    tbody.appendChild(tr);
+  });
+  if (S.words_history.length) {
+    const trAvg = document.createElement('tr');
+    trAvg.innerHTML =
+      `<td colspan="4" class="td-total" style="text-align:right;font-style:italic">` +
+        `${LANG.ui.avg_row || 'mean'}:</td>` +
+      `<td class="td-score td-right td-total">` +
+        `${(total / S.words_history.length).toFixed(3)}</td>`;
+    tbody.appendChild(trAvg);
+  }
+
+  // Show replay button (always useful, especially in sequential mode)
+  const replayBtn = document.getElementById('btn-replay');
+  replayBtn.style.display = S.corpus ? 'inline-block' : 'none';
+  replayBtn.textContent = S.mode === 'sequential'
+    ? (LANG.ui.new_sequence_btn || 'New sequence →')
+    : (LANG.ui.replay_btn || 'Play again →');
+
+  // Leaderboard
+  try {
+    const res = await fetch('/leaderboard?corpus_id=' + S.corpus.id);
+    const entries = await res.json();
+    renderLeaderboard(entries);
+  } catch (_) {
+    renderLeaderboard([]);
+  }
+}
+
+function renderLeaderboard(entries) {
+  const tbody = document.getElementById('leaderboard-tbody');
+  tbody.innerHTML = '';
+  if (!entries.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td colspan="4" class="lb-note">${LANG.ui.lb_min_words || 'At least 20 words required.'}</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+  entries.forEach(e => {
+    const tr = document.createElement('tr');
+    const name = e.is_llm
+      ? `<em>${esc(e.player_id)}</em>`
+      : e.username
+        ? esc(e.username)
+        : (LANG.ui.anon_prefix || 'Anon') + '\u202F' + e.player_id.slice(0, 4);
+    tr.innerHTML =
+      `<td class="td-mono">${e.rank}</td>` +
+      `<td>${name}</td>` +
+      `<td class="td-score td-right">${e.score.toFixed(3)}</td>` +
+      `<td class="td-mono td-right">${e.words_played}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Utility ────────────────────────────────────────────────────────────────
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function show(id, msg) {
+  const el = document.getElementById(id);
+  if (msg !== undefined) el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function hide(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+document.getElementById('btn-new-game').addEventListener('click', loadHome);
+
+async function replayCorpus() {
+  if (!S.corpus) return;
+  S.words_history = [];
+  showScreen('game');
+  await startSessionDirect(S.corpus.id, S.mode);
+}
+
+async function startSessionDirect(corpus_id, mode) {
+  try {
+    const res = await fetch('/session', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({corpus_id, mode}),
+    });
+    if (!res.ok) { loadHome(); return; }
+    const data = await res.json();
+    S.session_id = data.session_id;
+    S.corpus = data.corpus;
+    S.mode = data.mode || mode;
+    S.words_history = [];
+    showScreen('game');
+    await loadNextWord();
+  } catch (_) { loadHome(); }
+}
+
+// ── Boot ────────────────────────────────────────────────────────────────────
+const _savedLang = localStorage.getItem('entropy_lang') || 'ru';
+loadI18n(_savedLang).then(() => loadMe()).then(() => loadHome());
+</script>
+</body>
+</html>

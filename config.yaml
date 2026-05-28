@@ -1,0 +1,61 @@
+game:
+  max_attempts: 5
+  words_per_session: 10
+  context_words: 20
+  min_words_for_leaderboard: 20
+  fail_penalty_g: 6
+
+corpora:
+  - id: tolstoy
+    lang: ru
+    author: "Толстой"
+    title: "Война и мир"
+    file: data/ru/war_and_peace.txt
+    start_offset: 500
+    normalization: yo
+    difficulty: "★★★"
+
+  - id: austen
+    lang: en
+    author: Austen
+    title: Pride and Prejudice
+    file: data/en/austen_pride_prejudice.txt
+    start_offset: 35260
+    normalization: none
+    difficulty: "★★"
+
+  - id: woolf
+    lang: en
+    author: Woolf
+    title: Mrs Dalloway
+    file: data/en/woolf_mrs_dalloway.txt
+    start_offset: 1772
+    normalization: none
+    difficulty: "★★★★"
+
+  - id: houellebecq
+    lang: fr
+    author: Houellebecq
+    title: "La possibilité d'une île"
+    file: data/fr/houellebecq_possibilite_ile.txt
+    start_offset: 2051
+    normalization: none
+    difficulty: "★★★★"
+
+  - id: levy
+    lang: fr
+    author: Marc Levy
+    title: "Et si c'était vrai"
+    file: data/fr/levy_et_si_cetait_vrai.txt
+    start_offset: 131
+    normalization: none
+    difficulty: "★"
+
+  - id: proust
+    lang: fr
+    author: Proust
+    title: "À l'ombre des jeunes filles en fleur"
+    file: data/fr/proust_ombre_jeunes_filles.txt
+    start_offset: 313
+    normalization: none
+    difficulty: "★★★★★"
