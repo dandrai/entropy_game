@@ -897,10 +897,7 @@ document.getElementById('guess-form').addEventListener('submit', async e => {
       // Refresh stats panel if open
       const statsPanel = document.getElementById('game-stats-panel');
       if (!statsPanel.classList.contains('hidden')) renderStatsPanel();
-      if (data.correct) {
-        setTimeout(loadNextWord, 1400);
-      }
-      // on failure: user must click the button in the banner
+      setTimeout(loadNextWord, data.correct ? 1400 : 2800);
     } else {
       document.getElementById('attempt-label').textContent =
         (LANG.ui.attempt_label || 'Attempt') + '\u00A0' + S.attempt_num + '\u202F/\u202F' + S.max_attempts + ':';
@@ -923,13 +920,7 @@ function showResolutionBanner(data) {
   } else {
     banner.innerHTML =
       `<span class="resolved-fail">✗ ${LANG.ui.fail_word || 'Word:'} <strong>${esc(data.target_word)}</strong>` +
-      ` — G\u202F=\u202F${data.g_value}</span>` +
-      `<button id="btn-next-word" class="btn" style="margin-left:1.2rem">` +
-      `${LANG.ui.next_word_btn || 'Next →'}</button>`;
-    banner.querySelector('#btn-next-word').addEventListener('click', () => {
-      banner.classList.add('hidden');
-      loadNextWord();
-    });
+      ` — G\u202F=\u202F${data.g_value}</span>`;
   }
   banner.classList.remove('hidden');
 }
