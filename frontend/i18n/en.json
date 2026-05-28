@@ -33,6 +33,7 @@
     "col_words_played": "Words",
     "lb_min_words": "At least 20 words required to appear on the leaderboard.",
     "anon_prefix": "Anon",
+    "new_context_btn": "↺\u00A0New context",
     "new_sequence_btn": "New sequence →",
     "replay_btn": "Play again — same corpus →",
     "new_game_btn": "← New game",

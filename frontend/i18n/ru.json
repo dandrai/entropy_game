@@ -33,6 +33,7 @@
     "col_words_played": "Слов",
     "lb_min_words": "Нужно минимум 20 слов для попадания в таблицу.",
     "anon_prefix": "Аноним",
+    "new_context_btn": "↺\u00A0Новый контекст",
     "new_sequence_btn": "Новая последовательность →",
     "replay_btn": "Ещё раз — тот же корпус →",
     "new_game_btn": "← Новая игра",

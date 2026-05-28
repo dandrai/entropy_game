@@ -498,14 +498,6 @@ table.data-table td {
 
   <hr class="rule">
 
-  <h2 class="section-label" data-i18n="mode_section">Режим</h2>
-  <div class="mode-selector">
-    <button id="btn-mode-random" class="btn btn-mode active"
-            onclick="setMode('random')" data-i18n="mode_random">Случайные слова</button>
-    <button id="btn-mode-seq" class="btn btn-mode"
-            onclick="setMode('sequential')" data-i18n="mode_seq">≡&nbsp;Последовательно</button>
-  </div>
-
   <h2 class="section-label" data-i18n="corpus_section">Выберите корпус</h2>
   <div id="corpus-list"><p class="loading">Загрузка…</p></div>
   <div id="home-error" class="error-msg hidden"></div>
@@ -519,6 +511,8 @@ table.data-table td {
     <span id="game-corpus-info" class="game-corpus-info"></span>
     <span style="display:flex;align-items:baseline;gap:0.8rem">
       <span id="game-progress" class="game-progress"></span>
+      <button id="btn-new-context" class="btn-stats" onclick="replayCorpus()"
+              title="Jump to a new random position"></button>
       <button id="btn-stats" class="btn-stats" onclick="toggleStats()">Σ</button>
     </span>
   </div>
@@ -616,6 +610,8 @@ function applyStrings() {
   });
   const intro = document.getElementById('intro');
   if (intro && LANG.intro) intro.innerHTML = LANG.intro;
+  const ncBtn = document.getElementById('btn-new-context');
+  if (ncBtn) ncBtn.textContent = LANG.ui.new_context_btn || '↺';
 }
 
 async function setLang(lang) {
@@ -765,7 +761,7 @@ async function startSession(corpus_id) {
     const res = await fetch('/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ corpus_id, mode: S.mode }),
+      body: JSON.stringify({ corpus_id, mode: 'sequential' }),
     });
     if (!res.ok) {
       const err = await res.json();
@@ -819,8 +815,7 @@ async function loadNextWord() {
 function renderGameScreen() {
   // Header
   const corpusLabel = (S.corpus.author + ' — ' + S.corpus.title).toUpperCase();
-  const modeTag = S.mode === 'sequential' ? '\u202F≡' : '';
-  document.getElementById('game-corpus-info').textContent = corpusLabel + modeTag;
+  document.getElementById('game-corpus-info').textContent = corpusLabel;
   const playerPrefix = S.username ? S.username + '\u2002·\u2002' : '';
   document.getElementById('game-progress').textContent =
     playerPrefix + (LANG.ui.word_counter || 'Word') + '\u202F' +
@@ -1104,7 +1099,7 @@ async function replayCorpus() {
   if (!S.corpus) return;
   S.words_history = [];
   showScreen('game');
-  await startSessionDirect(S.corpus.id, S.mode);
+  await startSessionDirect(S.corpus.id, 'sequential');
 }
 
 async function startSessionDirect(corpus_id, mode) {

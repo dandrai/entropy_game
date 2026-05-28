@@ -33,6 +33,7 @@
     "col_words_played": "Mots",
     "lb_min_words": "Il faut au moins 20 mots pour figurer au classement.",
     "anon_prefix": "Anon",
+    "new_context_btn": "↺\u00A0Nouveau contexte",
     "new_sequence_btn": "Nouvelle séquence →",
     "replay_btn": "Rejouer — même corpus →",
     "new_game_btn": "← Nouveau jeu",
