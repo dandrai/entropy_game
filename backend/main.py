@@ -190,6 +190,8 @@ async def next_word(session_id: str):
             score = await _session_score(db, session_id)
             return {"session_complete": True, "score": score, "words_done": words_done}
 
+        passage_start_char = session.get("passage_start_char")
+
         # Resume active word if any
         current_pos = session["current_position"]
         if current_pos is not None:
@@ -198,14 +200,18 @@ async def next_word(session_id: str):
                 "WHERE session_id = ? AND position = ? ORDER BY attempt_num",
                 (session_id, current_pos),
             )).fetchall()
-            word, context = C.get_word_and_context(corpus_id, current_pos)
+            word, _sliding_ctx = C.get_word_and_context(corpus_id, current_pos)
+            if mode == "sequential" and passage_start_char is not None:
+                context = C.get_growing_context(corpus_id, passage_start_char, current_pos)
+            else:
+                context = _sliding_ctx
             return {
                 "session_complete": False,
                 "context": context,
                 "attempt_num": len(attempts) + 1,
                 "max_attempts": game.max_attempts,
                 "words_done": words_done,
-                "words_total": None,
+                "words_total": None if mode == "sequential" else game.words_per_session,
                 "attempts_history": [
                     {"attempt_num": a["attempt_num"], "guess": a["guess"], "correct": bool(a["correct"])}
                     for a in attempts
@@ -219,7 +225,7 @@ async def next_word(session_id: str):
             if seq is None:
                 score = await _session_score(db, session_id)
                 return {"session_complete": True, "score": score, "words_done": words_done}
-            new_word_idx, new_pos, context, _word = seq
+            new_word_idx, new_pos, _sliding_ctx, _word = seq
         else:
             played = {r[0] for r in await (await db.execute(
                 "SELECT position FROM word_results WHERE session_id = ?", (session_id,)
@@ -228,12 +234,24 @@ async def next_word(session_id: str):
             if result is None:
                 score = await _session_score(db, session_id)
                 return {"session_complete": True, "score": score, "words_done": words_done}
-            new_pos, context, _word = result
+            new_pos, _sliding_ctx, _word = result
             new_word_idx = C._find_word_index_by_position(corpus_id, new_pos) if mode == "sequential" else None
 
+        # For sequential sessions, build (or extend) the growing context.
+        if mode == "sequential":
+            if passage_start_char is None:
+                # First word of this passage: anchor at the start of its 20-word seed.
+                spans = C._get_word_spans(corpus_id)
+                ctx_word_idx = max(new_word_idx - game.context_words, 0)
+                passage_start_char = spans[ctx_word_idx][0]
+            context = C.get_growing_context(corpus_id, passage_start_char, new_pos)
+        else:
+            context = _sliding_ctx
+
         await db.execute(
-            "UPDATE sessions SET current_position = ?, chain_word_idx = ? WHERE session_id = ?",
-            (new_pos, new_word_idx, session_id),
+            "UPDATE sessions SET current_position = ?, chain_word_idx = ?, passage_start_char = ? "
+            "WHERE session_id = ?",
+            (new_pos, new_word_idx, passage_start_char, session_id),
         )
         await db.commit()
 

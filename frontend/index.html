@@ -642,7 +642,6 @@ const S = {
   words_total: 10,
   attempts_this_word: [],   // {attempt_num, guess, correct}
   words_history: [],        // {target_word, g_value, attempts:[]}
-  fullContext: null,        // growing text accumulator for sequential display
 };
 
 // ── Screens ────────────────────────────────────────────────────────────────
@@ -783,7 +782,6 @@ async function startSession(corpus_id) {
     S.corpus = data.corpus;
     S.mode = data.mode || 'random';
     S.words_history = [];
-    S.fullContext = null;
     showScreen('game');
     await loadNextWord();
   } catch (e) {
@@ -809,7 +807,6 @@ async function loadNextWord() {
     }
 
     S.context       = data.context;
-    if (S.fullContext === null) S.fullContext = data.context;
     S.attempt_num   = data.attempt_num;
     S.max_attempts  = data.max_attempts;
     S.words_done    = data.words_done;
@@ -836,7 +833,7 @@ function renderGameScreen() {
   // Context
   const ctx = document.getElementById('context-block');
   ctx.textContent = '';
-  ctx.appendChild(document.createTextNode((S.fullContext || S.context) + ' '));
+  ctx.appendChild(document.createTextNode(S.context + ' '));
   const blank = document.createElement('span');
   blank.className = 'hidden-word';
   blank.textContent = '\u00B7\u00B7\u00B7\u00B7\u00B7';  // ·····
@@ -904,13 +901,12 @@ document.getElementById('guess-form').addEventListener('submit', async e => {
         g_value: data.g_value,
         attempts: S.attempts_this_word.slice(),
       });
-      // Reveal the word in the context block and grow the accumulator
+      // Reveal the word in the context block before auto-advancing
       const blank = document.querySelector('#context-block .hidden-word');
       if (blank) {
         blank.textContent = data.target_word;
         blank.className = 'revealed-word';
       }
-      S.fullContext = (S.fullContext || S.context) + ' ' + data.target_word;
       showResolutionBanner(data);
       S.attempts_this_word = [];
       // Refresh stats panel if open
@@ -1125,7 +1121,6 @@ async function startSessionDirect(corpus_id, mode) {
     S.corpus = data.corpus;
     S.mode = data.mode || mode;
     S.words_history = [];
-    S.fullContext = null;
     showScreen('game');
     await loadNextWord();
   } catch (_) { loadHome(); }

@@ -228,17 +228,17 @@ def next_sequential_word(
             if len(word) < 2:
                 idx += 1
                 continue
-        # Skip sentence-start words
-        pos = start - 1
-        while pos >= 0 and text[pos] in ' \t\n\r':
-            pos -= 1
-        if pos >= 0 and text[pos] in '.!?\u2026':
-            idx += 1
-            continue
+        # No sentence-start filter: in sequential mode the user reads forward
+        # through the text and should see every eligible word as a target.
         context_start = spans[idx - game.context_words][0]
         context = text[context_start:start].rstrip()
         return idx, start, context, word
     return None
+
+
+def get_growing_context(corpus_id: str, passage_start_char: int, target_char: int) -> str:
+    """Full text from passage_start_char up to (not including) target_char."""
+    return _load_text(corpus_id)[passage_start_char:target_char].rstrip()
 
 
 def normalize_for_comparison(word: str, normalization: str) -> str:

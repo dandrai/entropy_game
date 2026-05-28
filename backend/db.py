@@ -13,13 +13,14 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
-    session_id       TEXT PRIMARY KEY,
-    player_id        TEXT NOT NULL,
-    corpus_id        TEXT NOT NULL,
-    started_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
-    current_position INTEGER,
-    mode             TEXT DEFAULT 'random',
-    chain_word_idx   INTEGER
+    session_id         TEXT PRIMARY KEY,
+    player_id          TEXT NOT NULL,
+    corpus_id          TEXT NOT NULL,
+    started_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
+    current_position   INTEGER,
+    mode               TEXT DEFAULT 'random',
+    chain_word_idx     INTEGER,
+    passage_start_char INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS guesses (
@@ -59,6 +60,7 @@ _MIGRATIONS = [
     "ALTER TABLE word_results ADD COLUMN target_word TEXT DEFAULT ''",
     "ALTER TABLE sessions ADD COLUMN mode TEXT DEFAULT 'random'",
     "ALTER TABLE sessions ADD COLUMN chain_word_idx INTEGER",
+    "ALTER TABLE sessions ADD COLUMN passage_start_char INTEGER",
 ]
 
 
