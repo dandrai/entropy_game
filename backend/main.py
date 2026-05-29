@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import math
 import uuid
+from collections import Counter, defaultdict
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Optional
@@ -301,10 +303,11 @@ async def submit_guess(body: GuessRequest):
         letter_feedback = C.compute_letter_feedback(body.guess.strip(), word, c.normalization)
         attempt_num = attempts_used + 1
 
+        fb_json = json.dumps([f["status"] for f in letter_feedback])
         await db.execute(
-            "INSERT INTO guesses (session_id, position, attempt_num, guess, correct) "
-            "VALUES (?,?,?,?,?)",
-            (body.session_id, current_pos, attempt_num, body.guess.strip(), correct),
+            "INSERT INTO guesses (session_id, position, attempt_num, guess, correct, letter_feedback) "
+            "VALUES (?,?,?,?,?,?)",
+            (body.session_id, current_pos, attempt_num, body.guess.strip(), correct, fb_json),
         )
 
         word_resolved = correct or (attempt_num >= game.max_attempts)
@@ -341,20 +344,15 @@ async def submit_guess(body: GuessRequest):
 @app.get("/session/stats")
 async def session_stats(session_id: str):
     async with aiosqlite.connect(DB_PATH) as db:
-        rows = await (await db.execute(
-            "SELECT g_value FROM word_results WHERE session_id = ? ORDER BY rowid",
-            (session_id,),
-        )).fetchall()
+        words_data = await _load_words_data(db, session_id=session_id)
 
-    g_values = [r[0] for r in rows]
-    if not g_values:
+    if not words_data:
         return {"words_count": 0, "entropy": 0.0, "g_distribution": {str(g): 0 for g in range(1, 7)}}
 
-    entropy = sum(math.log2(g) for g in g_values) / len(g_values)
-    g_dist = {str(g): sum(1 for v in g_values if v == g) for g in range(1, 7)}
+    g_dist = {str(g): sum(1 for w in words_data if w["g_value"] == g) for g in range(1, 7)}
     return {
-        "words_count": len(g_values),
-        "entropy": round(entropy, 4),
+        "words_count": len(words_data),
+        "entropy": _entropy_bound(words_data),
         "g_distribution": g_dist,
     }
 
@@ -363,33 +361,54 @@ async def session_stats(session_id: str):
 async def get_leaderboard(corpus_id: Optional[str] = None):
     game = C.get_game_config()
 
-    from collections import defaultdict
     async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
         if corpus_id:
-            rows = await (await db.execute(
-                "SELECT player_id, corpus_id, g_value FROM word_results WHERE corpus_id = ?",
+            wr_rows = await (await db.execute(
+                "SELECT player_id, corpus_id, g_value, target_word, session_id, position "
+                "FROM word_results WHERE corpus_id = ?",
                 (corpus_id,),
             )).fetchall()
         else:
-            rows = await (await db.execute(
-                "SELECT player_id, corpus_id, g_value FROM word_results"
+            wr_rows = await (await db.execute(
+                "SELECT player_id, corpus_id, g_value, target_word, session_id, position "
+                "FROM word_results"
             )).fetchall()
         urows = await (await db.execute("SELECT player_id, username FROM users")).fetchall()
+
+        # Load all feedback data once
+        all_guesses = await (await db.execute(
+            "SELECT session_id, position, attempt_num, letter_feedback FROM guesses "
+            "ORDER BY session_id, position, attempt_num"
+        )).fetchall()
+
     usernames = {r[0]: r[1] for r in urows}
+
+    # Build feedback lookup: (session_id, position) -> [status_list per attempt]
+    feedback_map: dict = defaultdict(list)
+    for sid, pos, _, fb_json in all_guesses:
+        feedback_map[(sid, pos)].append(json.loads(fb_json) if fb_json else [])
+
+    # Group by (player, corpus)
     buckets: dict = defaultdict(list)
-    for player_id, cid, g in rows:
-        buckets[(player_id, cid)].append(g)
+    for row in wr_rows:
+        key = (row["player_id"], row["corpus_id"])
+        fb = feedback_map.get((row["session_id"], row["position"]), [])
+        buckets[key].append({
+            "g_value": row["g_value"],
+            "word_length": len(row["target_word"]) if row["target_word"] else 0,
+            "feedbacks": fb,
+        })
 
     entries = []
-    for (player_id, cid), g_values in buckets.items():
-        if len(g_values) < game.min_words_for_leaderboard:
+    for (player_id, cid), words_data in buckets.items():
+        if len(words_data) < game.min_words_for_leaderboard:
             continue
-        score = sum(math.log2(g) for g in g_values) / len(g_values)
         entries.append({
             "player_id": player_id,
             "corpus_id": cid,
-            "score": round(score, 4),
-            "words_played": len(g_values),
+            "score": _entropy_bound(words_data),
+            "words_played": len(words_data),
             "is_llm": False,
             "username": usernames.get(player_id),
         })
@@ -402,10 +421,98 @@ async def get_leaderboard(corpus_id: Optional[str] = None):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-async def _session_score(db: aiosqlite.Connection, session_id: str) -> float:
-    rows = await (await db.execute(
-        "SELECT g_value FROM word_results WHERE session_id = ?", (session_id,)
+async def _load_words_data(db: aiosqlite.Connection, session_id: str) -> list[dict]:
+    """Load word results with their feedback sequences for a session."""
+    db.row_factory = aiosqlite.Row
+    wr_rows = await (await db.execute(
+        "SELECT g_value, target_word, position FROM word_results WHERE session_id = ?",
+        (session_id,),
     )).fetchall()
-    if not rows:
+
+    g_rows = await (await db.execute(
+        "SELECT position, letter_feedback FROM guesses WHERE session_id = ? "
+        "ORDER BY position, attempt_num",
+        (session_id,),
+    )).fetchall()
+
+    fb_by_pos: dict = defaultdict(list)
+    for pos, fb_json in g_rows:
+        fb_by_pos[pos].append(json.loads(fb_json) if fb_json else [])
+
+    return [
+        {
+            "g_value": r["g_value"],
+            "word_length": len(r["target_word"]) if r["target_word"] else 0,
+            "feedbacks": fb_by_pos.get(r["position"], []),
+        }
+        for r in wr_rows
+    ]
+
+
+async def _session_score(db: aiosqlite.Connection, session_id: str) -> float:
+    words_data = await _load_words_data(db, session_id)
+    return _entropy_bound(words_data)
+
+
+def _entropy_bound(words_data: list[dict]) -> float:
+    """
+    Upper bound on conditional entropy F_N using the feedback-sequence method.
+
+    Formula (§3 of the analysis):
+        F_N ≤ h(q₁) + (1−q₁)[H(ℓ|miss) + Σ_t H(F_t | F_{<t}, ℓ)]
+
+    where q₁ = P(correct on attempt 1), ℓ = word length, F_t = Wordle feedback
+    pattern at attempt t.  Marginalising over F_{<t} (i.e. estimating H(F_t|ℓ)
+    instead of the conditional) gives a valid, if looser, upper bound.
+    When feedback data are sparse (<3 obs per group) the per-tile maximum
+    log₂3 is used as the fallback, which is always an upper bound.
+    """
+    n = len(words_data)
+    if n == 0:
         return 0.0
-    return round(sum(math.log2(r[0]) for r in rows) / len(rows), 4)
+
+    def h_bin(p: float) -> float:
+        if p <= 0 or p >= 1:
+            return 0.0
+        return -p * math.log2(p) - (1 - p) * math.log2(1 - p)
+
+    def h_empirical(seq) -> float:
+        counts = Counter(seq)
+        total = sum(counts.values())
+        return -sum((c / total) * math.log2(c / total) for c in counts.values())
+
+    # q₁: fraction of first-attempt successes
+    q1 = sum(1 for w in words_data if w["g_value"] == 1) / n
+    bound = h_bin(q1)
+
+    misses = [w for w in words_data if w["g_value"] > 1]
+    if not misses:
+        return round(bound, 4)
+
+    n_miss = len(misses)
+    # H(ℓ | miss): entropy of word-length distribution among misses
+    h_len = h_empirical([w["word_length"] for w in misses])
+
+    # Σ_t H(F_t | ℓ): for each (length, attempt-index) group, estimate H(F_t | ℓ).
+    # Sum these per group, then divide by n_miss to get the expected sum per word.
+    # (The formula sums over attempts per word then averages over words.)
+    groups: dict = defaultdict(list)
+    for w in misses:
+        ell = w["word_length"]
+        for t_idx, fb in enumerate(w["feedbacks"]):
+            groups[(ell, t_idx)].append(tuple(fb))
+
+    total_fb_bits = 0.0
+    for (ell, _t_idx), patterns in groups.items():
+        m = len(patterns)
+        if m >= 3:
+            h = h_empirical(patterns)
+        else:
+            # Sparse data: per-tile maximum log₂3 is a valid upper bound
+            h = ell * math.log2(3)
+        total_fb_bits += h * m  # H × count = contribution of this group
+
+    # Divide by n_miss to get expected Σ_t H(F_t|ℓ) per missed word
+    avg_fb_per_word = total_fb_bits / n_miss
+    bound += (1 - q1) * (h_len + avg_fb_per_word)
+    return round(bound, 4)

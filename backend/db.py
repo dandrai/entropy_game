@@ -24,13 +24,14 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 CREATE TABLE IF NOT EXISTS guesses (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id  TEXT NOT NULL,
-    position    INTEGER NOT NULL,
-    attempt_num INTEGER NOT NULL,
-    guess       TEXT NOT NULL,
-    correct     BOOLEAN NOT NULL,
-    timestamp   DATETIME DEFAULT CURRENT_TIMESTAMP
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id      TEXT NOT NULL,
+    position        INTEGER NOT NULL,
+    attempt_num     INTEGER NOT NULL,
+    guess           TEXT NOT NULL,
+    correct         BOOLEAN NOT NULL,
+    letter_feedback TEXT,
+    timestamp       DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS word_results (
@@ -61,6 +62,7 @@ _MIGRATIONS = [
     "ALTER TABLE sessions ADD COLUMN mode TEXT DEFAULT 'random'",
     "ALTER TABLE sessions ADD COLUMN chain_word_idx INTEGER",
     "ALTER TABLE sessions ADD COLUMN passage_start_char INTEGER",
+    "ALTER TABLE guesses ADD COLUMN letter_feedback TEXT",
 ]
 
 
