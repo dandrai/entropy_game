@@ -133,10 +133,12 @@ def _get_eligible_indices(corpus_id: str) -> list[int]:
         if corpus.lang == 'ru':
             if not is_cyr[idx]:
                 continue
+            if len(text[start:_end]) < 3:
+                continue
             if not all(is_cyr[idx - game.context_words:idx]):
                 continue
         else:
-            if len(text[start:_end]) < 2:
+            if len(text[start:_end]) < 3:
                 continue
 
         # Skip if target is the first word of a sentence
@@ -232,11 +234,11 @@ def next_sequential_word(
         start, end = spans[idx]
         word = text[start:end]
         if corpus.lang == 'ru':
-            if not _CYRILLIC_WORD.match(word):
+            if not _CYRILLIC_WORD.match(word) or len(word) < 3:
                 idx += 1
                 continue
         else:
-            if len(word) < 2:
+            if len(word) < 3:
                 idx += 1
                 continue
         # No sentence-start filter: in sequential mode the user reads forward
@@ -263,3 +265,28 @@ def verify_guess(guess: str, target: str, normalization: str) -> bool:
     return normalize_for_comparison(guess, normalization) == normalize_for_comparison(
         target, normalization
     )
+
+
+def compute_letter_feedback(
+    guess: str, target: str, normalization: str
+) -> list[dict]:
+    """Standard Wordle feedback for each letter of the guess vs the target."""
+    g_norm = list(normalize_for_comparison(guess, normalization))
+    t_norm = list(normalize_for_comparison(target, normalization))
+    n = len(t_norm)
+    statuses = ["absent"] * len(g_norm)
+    target_pool = t_norm[:]
+
+    for i in range(min(len(g_norm), n)):
+        if g_norm[i] == t_norm[i]:
+            statuses[i] = "correct"
+            target_pool[i] = None
+
+    for i in range(min(len(g_norm), n)):
+        if statuses[i] == "correct":
+            continue
+        if g_norm[i] in target_pool:
+            statuses[i] = "present"
+            target_pool[target_pool.index(g_norm[i])] = None
+
+    return [{"letter": list(guess)[i], "status": statuses[i]} for i in range(len(g_norm))]

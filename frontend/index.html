@@ -337,6 +337,69 @@ hr.rule-light {
 .btn-arrow:hover { color: var(--accent); }
 .btn-arrow:disabled { color: var(--border); cursor: default; }
 
+/* ── Wordle grid ────────────────────────────────────────────────────────── */
+
+.wordle-grid {
+  margin: 0.7rem 0 0.4rem;
+}
+
+.wordle-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.wordle-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 2.4rem;
+  height: 2.4rem;
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  border: 2px solid var(--border);
+  background: transparent;
+  color: var(--ink);
+  user-select: none;
+}
+
+.wordle-tile.correct { background: #4a6741; border-color: #4a6741; color: var(--paper); }
+.wordle-tile.present { background: #8b7325; border-color: #8b7325; color: var(--paper); }
+.wordle-tile.absent  { background: #888;    border-color: #888;    color: var(--paper); }
+
+/* ── Wordle keyboard ────────────────────────────────────────────────────── */
+
+.wordle-keyboard { margin: 0.6rem 0 0.4rem; }
+
+.wk-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 3px;
+}
+
+.wk-key {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 0.35rem 0.45rem;
+  min-width: 1.9rem;
+  text-align: center;
+  border: 1px solid var(--border);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.wk-key:hover { border-color: var(--ink); }
+.wk-key.correct { background: #4a6741; border-color: #4a6741; color: var(--paper); }
+.wk-key.present { background: #8b7325; border-color: #8b7325; color: var(--paper); }
+.wk-key.absent  { background: #aaa;    border-color: #aaa;    color: var(--paper); }
+
 /* ── Stats toggle ───────────────────────────────────────────────────────── */
 
 .btn-stats {
@@ -532,6 +595,7 @@ table.data-table td {
 
   <hr class="rule-light">
 
+  <div id="wordle-grid" class="wordle-grid hidden"></div>
   <div id="attempts-list" class="attempts-list"></div>
 
   <form id="guess-form" class="input-area">
@@ -541,6 +605,7 @@ table.data-table td {
     <button id="btn-submit" class="btn-arrow" type="submit">→</button>
   </form>
 
+  <div id="wordle-keyboard" class="wordle-keyboard hidden"></div>
   <div id="word-resolved-banner" class="word-resolved-banner hidden"></div>
   <div id="game-error" class="error-msg hidden"></div>
 
@@ -642,6 +707,10 @@ const S = {
   words_total: 10,
   attempts_this_word: [],   // {attempt_num, guess, correct}
   words_history: [],        // {target_word, g_value, attempts:[]}
+  wordle_mode: false,
+  word_length: 0,
+  wordle_rows: [],           // array of [{letter, status}]
+  letter_states: {},         // letter → best status seen
 };
 
 // ── Screens ────────────────────────────────────────────────────────────────
@@ -793,6 +862,13 @@ async function startSession(corpus_id) {
 async function loadNextWord() {
   hide('game-error');
   hide('word-resolved-banner');
+  hide('wordle-grid');
+  hide('wordle-keyboard');
+  show('attempts-list');
+  S.wordle_mode = false;
+  S.word_length = 0;
+  S.wordle_rows = [];
+  S.letter_states = {};
   setInputEnabled(false);
 
   try {
@@ -875,6 +951,13 @@ document.getElementById('guess-form').addEventListener('submit', async e => {
   const guess = input.value.trim();
   if (!guess) return;
 
+  // In Wordle mode enforce exact word length
+  if (S.wordle_mode && guess.length !== S.word_length) {
+    show('game-error', `${S.word_length} letters required`);
+    input.select();
+    return;
+  }
+
   setInputEnabled(false);
   hide('game-error');
 
@@ -894,7 +977,24 @@ document.getElementById('guess-form').addEventListener('submit', async e => {
     });
     S.attempt_num = data.attempt_num + 1;
 
-    renderAttempts();
+    // Activate Wordle mode on first wrong guess
+    if (!data.correct && data.attempt_num === 1) {
+      S.wordle_mode = true;
+      S.word_length = data.word_length;
+      hide('attempts-list');
+      show('wordle-grid');
+      show('wordle-keyboard');
+    }
+
+    // Update Wordle state
+    if (S.wordle_mode && data.letter_feedback) {
+      S.wordle_rows.push(data.letter_feedback);
+      updateLetterStates(data.letter_feedback);
+      renderWordleGrid();
+      renderKeyboard();
+    } else {
+      renderAttempts();
+    }
 
     if (data.word_resolved) {
       S.words_history.push({
@@ -902,7 +1002,6 @@ document.getElementById('guess-form').addEventListener('submit', async e => {
         g_value: data.g_value,
         attempts: S.attempts_this_word.slice(),
       });
-      // Reveal the word in the context block before auto-advancing
       const blank = document.querySelector('#context-block .hidden-word');
       if (blank) {
         blank.textContent = data.target_word;
@@ -910,7 +1009,6 @@ document.getElementById('guess-form').addEventListener('submit', async e => {
       }
       showResolutionBanner(data);
       S.attempts_this_word = [];
-      // Refresh stats panel if open
       const statsPanel = document.getElementById('game-stats-panel');
       if (!statsPanel.classList.contains('hidden')) renderStatsPanel();
       setTimeout(loadNextWord, data.correct ? 1400 : 2800);
@@ -944,6 +1042,90 @@ function showResolutionBanner(data) {
 function setInputEnabled(enabled) {
   document.getElementById('guess-input').disabled = !enabled;
   document.getElementById('btn-submit').disabled = !enabled;
+}
+
+// ── Wordle grid ────────────────────────────────────────────────────────────
+
+function updateLetterStates(feedback) {
+  const priority = { correct: 3, present: 2, absent: 1 };
+  feedback.forEach(({ letter, status }) => {
+    const l = letter.toLowerCase();
+    if ((priority[status] || 0) > (priority[S.letter_states[l]] || 0))
+      S.letter_states[l] = status;
+  });
+}
+
+function renderWordleGrid() {
+  const grid = document.getElementById('wordle-grid');
+  const n = S.word_length;
+  const totalRows = S.max_attempts - 1; // 4 Wordle rows (attempts 2-5)
+
+  // Scale tile size for longer words
+  const tileSize = n <= 7 ? '2.4rem' : n <= 10 ? '2.0rem' : n <= 13 ? '1.7rem' : '1.4rem';
+
+  let html = '';
+  for (let r = 0; r < totalRows; r++) {
+    html += '<div class="wordle-row">';
+    const row = S.wordle_rows[r];
+    for (let c = 0; c < n; c++) {
+      const cell = row ? row[c] : null;
+      const status = cell ? cell.status : '';
+      const letter = cell ? cell.letter : '';
+      html += `<div class="wordle-tile ${status}" style="flex-basis:${tileSize};height:${tileSize}">${esc(letter)}</div>`;
+    }
+    html += '</div>';
+  }
+  grid.innerHTML = html;
+}
+
+// ── Keyboard ───────────────────────────────────────────────────────────────
+
+const KEYBOARDS = {
+  ru: [
+    'й ц у к е н г ш щ з х ъ ё'.split(' '),
+    'ф ы в а п р о л д ж э'.split(' '),
+    'я ч с м и т ь б ю'.split(' '),
+  ],
+  en: [
+    'q w e r t y u i o p'.split(' '),
+    'a s d f g h j k l'.split(' '),
+    'z x c v b n m'.split(' '),
+  ],
+  fr: [
+    'a z e r t y u i o p'.split(' '),
+    'q s d f g h j k l m'.split(' '),
+    'w x c v b n'.split(' '),
+    'é è ê à â ù û ç œ ô î'.split(' '),
+  ],
+};
+
+function renderKeyboard() {
+  const lang = (S.corpus && S.corpus.lang) || 'en';
+  const rows = KEYBOARDS[lang] || KEYBOARDS.en;
+  const input = document.getElementById('guess-input');
+
+  let html = '';
+  rows.forEach(row => {
+    html += '<div class="wk-row">';
+    row.forEach(key => {
+      const st = S.letter_states[key] || '';
+      html += `<button type="button" class="wk-key ${st}" data-key="${key}">${key}</button>`;
+    });
+    html += '</div>';
+  });
+
+  const kb = document.getElementById('wordle-keyboard');
+  kb.innerHTML = html;
+
+  kb.querySelectorAll('.wk-key').forEach(btn => {
+    btn.addEventListener('mousedown', ev => {
+      ev.preventDefault(); // don't blur the input
+      if (!input.disabled) {
+        input.value += btn.dataset.key;
+        input.focus();
+      }
+    });
+  });
 }
 
 // ── Session stats panel ────────────────────────────────────────────────────

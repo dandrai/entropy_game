@@ -298,6 +298,7 @@ async def submit_guess(body: GuessRequest):
 
         word, context_text = C.get_word_and_context(corpus_id, current_pos)
         correct = C.verify_guess(body.guess, word, c.normalization)
+        letter_feedback = C.compute_letter_feedback(body.guess.strip(), word, c.normalization)
         attempt_num = attempts_used + 1
 
         await db.execute(
@@ -332,6 +333,8 @@ async def submit_guess(body: GuessRequest):
             "word_resolved": word_resolved,
             "g_value": g_value,
             "target_word": word if word_resolved else None,
+            "word_length": len(word),
+            "letter_feedback": letter_feedback,
         }
 
 
