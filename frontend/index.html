@@ -627,7 +627,6 @@ table.data-table td {
         <th data-i18n="col_word">Слово</th>
         <th style="text-align:right" data-i18n="col_attempts">Попытки</th>
         <th style="text-align:right">G</th>
-        <th style="text-align:right">log₂G</th>
       </tr>
     </thead>
     <tbody id="words-tbody"></tbody>
@@ -1139,40 +1138,47 @@ function toggleStats() {
   }
 }
 
-function renderStatsPanel() {
+async function renderStatsPanel() {
   const panel = document.getElementById('game-stats-panel');
   if (!S.words_history.length) {
     panel.innerHTML = `<span style="color:var(--muted);font-style:italic">${LANG.ui.no_stats || 'No data yet.'}</span>`;
     return;
   }
-  panel.innerHTML = buildStatsHTML(S.words_history);
+  try {
+    const res = await fetch('/session/stats?session_id=' + S.session_id);
+    const stats = await res.json();
+    panel.innerHTML = buildStatsHTML(S.words_history, stats.entropy);
+  } catch (_) {
+    panel.innerHTML = `<span style="color:var(--muted);font-style:italic">${LANG.ui.no_stats || 'No data yet.'}</span>`;
+  }
 }
 
-function buildStatsHTML(history) {
+function buildStatsHTML(history, entropy) {
   const gs = history.map(w => w.g_value);
-  const entropy = gs.reduce((s, g) => s + Math.log2(g), 0) / gs.length;
+  const n = gs.length;
 
-  // Per-character entropy: divide by mean word length + 1 (space)
-  const meanCharPerWord = history.reduce((s, w) => s + (w.target_word ? w.target_word.length + 1 : 6), 0) / gs.length;
+  // Per-character: bits/word ÷ mean (word_length + 1 space)
+  const meanCharPerWord = history.reduce((s, w) => s + (w.target_word ? w.target_word.length + 1 : 6), 0) / n;
   const entropyChar = entropy / meanCharPerWord;
 
   const dist = {};
   for (let g = 1; g <= 6; g++) dist[g] = gs.filter(v => v === g).length;
   const maxCount = Math.max(...Object.values(dist), 1);
-  const hasCap = dist[6] > 0;
+  // Bound is loose when few observations — empirical feedback distributions not yet reliable
+  const isSparse = n < 20;
 
   let html = `<div class="stats-entropy">`;
-  html += `H\u0303\u202F\u2248\u202F<strong>${entropy.toFixed(3)}</strong>\u2002${LANG.ui.bits_word || 'bits/word'}`;
-  html += `\u2002\u00B7\u2002<strong>${entropyChar.toFixed(3)}</strong>\u2002${LANG.ui.bits_char || 'bits/char'}`;
-  html += `\u2002\u00B7\u2002${gs.length}\u202F${LANG.ui.words_count || 'words'}</div>`;
+  html += `H\u0303\u202F\u2248\u202F<strong>${entropy.toFixed(2)}</strong>\u2002${LANG.ui.bits_word || 'bits/word'}`;
+  html += `\u2002\u00B7\u2002<strong>${entropyChar.toFixed(2)}</strong>\u2002${LANG.ui.bits_char || 'bits/char'}`;
+  html += `\u2002\u00B7\u2002${n}\u202F${LANG.ui.words_count || 'words'}</div>`;
   html += `<div class="stats-ref">${LANG.ui.kolmogorov_ref || 'Kolmogorov (1965): 0.9–1.4 bits/char'}`;
-  if (hasCap) html += `\u2002<span class="stats-bias">[G\u202F\u2264\u202F6 \u2192 ${LANG.ui.lower_bound_note || 'lower bound'}]</span>`;
+  if (isSparse) html += `\u2002<span class="stats-bias">[${LANG.ui.sparse_note || 'loose — few observations'}]</span>`;
   html += `</div>`;
 
   html += '<table class="stats-dist-table" style="margin-top:0.6rem">';
   for (let g = 1; g <= 6; g++) {
     const count = dist[g];
-    const pct = gs.length ? Math.round(count / gs.length * 100) : 0;
+    const pct = n ? Math.round(count / n * 100) : 0;
     const barLen = Math.round(count / maxCount * 18);
     const bar = barLen > 0 ? '\u2588'.repeat(barLen) : '\u00B7';
     const label = g === 6 ? (LANG.ui.g_fail_label || '\u2717\u202FG\u202F=\u202F6') : `G\u202F=\u202F${g}`;
@@ -1190,37 +1196,24 @@ async function showResults() {
   // Session score + distribution
   const scoreEl = document.getElementById('session-score');
   scoreEl.innerHTML =
-    `H\u0303\u202F\u2248\u202F<span class="score-val">${(S.session_score || 0).toFixed(3)}</span>` +
+    `H\u0303\u202F\u2248\u202F<span class="score-val">${(S.session_score || 0).toFixed(2)}</span>` +
     `\u2002${LANG.ui.bits_word || 'bits/word'}\u2002·\u2002${LANG.ui.upper_bound_label || 'upper bound on entropy'}`;
 
   const statsEl = document.getElementById('results-stats');
-  statsEl.innerHTML = S.words_history.length ? buildStatsHTML(S.words_history) : '';
+  statsEl.innerHTML = S.words_history.length ? buildStatsHTML(S.words_history, S.session_score || 0) : '';
 
-  // Words table
+  // Words table — per-word G only; aggregate entropy comes from the stats panel above
   const tbody = document.getElementById('words-tbody');
   tbody.innerHTML = '';
-  let total = 0;
   S.words_history.forEach((w, i) => {
-    const log2g = Math.log2(w.g_value);
-    total += log2g;
     const tr = document.createElement('tr');
     tr.innerHTML =
       `<td class="td-mono">${i + 1}</td>` +
       `<td><em>${esc(w.target_word)}</em></td>` +
       `<td class="td-mono td-right">${w.attempts.length}</td>` +
-      `<td class="td-mono td-right">${w.g_value}</td>` +
-      `<td class="td-score td-right">${log2g.toFixed(3)}</td>`;
+      `<td class="td-mono td-right">${w.g_value === 6 ? '\u2717' : w.g_value}</td>`;
     tbody.appendChild(tr);
   });
-  if (S.words_history.length) {
-    const trAvg = document.createElement('tr');
-    trAvg.innerHTML =
-      `<td colspan="4" class="td-total" style="text-align:right;font-style:italic">` +
-        `${LANG.ui.avg_row || 'mean'}:</td>` +
-      `<td class="td-score td-right td-total">` +
-        `${(total / S.words_history.length).toFixed(3)}</td>`;
-    tbody.appendChild(trAvg);
-  }
 
   // Show replay button (always useful, especially in sequential mode)
   const replayBtn = document.getElementById('btn-replay');
