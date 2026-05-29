@@ -118,6 +118,7 @@ async def list_corpora():
             "author": c.author,
             "title": c.title,
             "difficulty": c.difficulty,
+            "format": c.format,
             "available": C.is_corpus_available(c.id),
         }
         for c in corpora.values()
@@ -159,7 +160,7 @@ async def create_session(
         "mode": mode,
         "corpus": {
             "id": c.id, "author": c.author, "title": c.title,
-            "lang": c.lang, "difficulty": c.difficulty,
+            "lang": c.lang, "difficulty": c.difficulty, "format": c.format,
         },
     }
 

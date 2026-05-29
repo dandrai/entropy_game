@@ -832,6 +832,7 @@ function renderGameScreen() {
 
   // Context
   const ctx = document.getElementById('context-block');
+  ctx.style.whiteSpace = (S.corpus.format === 'verse') ? 'pre-wrap' : '';
   ctx.textContent = '';
   ctx.appendChild(document.createTextNode(S.context + ' '));
   const blank = document.createElement('span');
@@ -1103,7 +1104,6 @@ document.getElementById('btn-new-game').addEventListener('click', loadHome);
 
 async function replayCorpus() {
   if (!S.corpus) return;
-  S.words_history = [];
   showScreen('game');
   await startSessionDirect(S.corpus.id, 'sequential');
 }
@@ -1120,7 +1120,6 @@ async function startSessionDirect(corpus_id, mode) {
     S.session_id = data.session_id;
     S.corpus = data.corpus;
     S.mode = data.mode || mode;
-    S.words_history = [];
     showScreen('game');
     await loadNextWord();
   } catch (_) { loadHome(); }

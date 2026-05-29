@@ -33,6 +33,7 @@ class CorpusConfig:
     start_offset: int
     normalization: str
     difficulty: str
+    format: str = "prose"
 
 
 @lru_cache(maxsize=1)
@@ -66,6 +67,12 @@ def is_corpus_available(corpus_id: str) -> bool:
     return (PROJECT_ROOT / corpora[corpus_id].file).exists()
 
 
+_CYRILLIC_TO_LATIN = str.maketrans(
+    'аеорсхАЕОРСХ',
+    'aeopcxAEOPCX',
+)
+
+
 def _clean_text(text: str) -> str:
     # Normalize Latin stress-mark lookalikes used in Russian OCR
     text = text.replace('\u00F2', 'о').replace('\u00F3', 'о')  # ò, ó → о
@@ -82,8 +89,12 @@ def _clean_text(text: str) -> str:
 @lru_cache(maxsize=10)
 def _load_text(corpus_id: str) -> str:
     _, corpora = load_config()
-    path = PROJECT_ROOT / corpora[corpus_id].file
-    return _clean_text(path.read_text(encoding="utf-8"))
+    corpus = corpora[corpus_id]
+    text = _clean_text((PROJECT_ROOT / corpus.file).read_text(encoding="utf-8"))
+    if corpus.lang != 'ru':
+        # Replace Cyrillic lookalike characters left by EPUB OCR (e.g. Cyrillic а→a)
+        text = text.translate(_CYRILLIC_TO_LATIN)
+    return text
 
 
 @lru_cache(maxsize=10)

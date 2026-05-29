@@ -1,7 +1,7 @@
 game:
   max_attempts: 5
   words_per_session: 10
-  context_words: 20
+  context_words: 40
   min_words_for_leaderboard: 20
   fail_penalty_g: 6
 
@@ -14,6 +14,16 @@ corpora:
     start_offset: 500
     normalization: yo
     difficulty: "★★★"
+
+  - id: onegin
+    lang: ru
+    author: "Пушкин"
+    title: "Евгений Онегин"
+    file: data/ru/onegin.txt
+    start_offset: 1144
+    normalization: yo
+    format: verse
+    difficulty: "★★★★"
 
   - id: austen
     lang: en
