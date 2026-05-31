@@ -22,7 +22,7 @@
     "fail_word": "Слово:",
     "next_word_btn": "Следующее\u00A0→",
     "results_title": "Результаты сессии",
-    "upper_bound_label": "верхняя оценка энтропии",
+    "upper_bound_label": "оценка энтропии",
     "col_num": "#",
     "col_word": "Слово",
     "col_attempts": "Попытки",

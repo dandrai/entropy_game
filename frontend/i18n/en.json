@@ -22,7 +22,7 @@
     "fail_word": "Word:",
     "next_word_btn": "Next\u00A0→",
     "results_title": "Session results",
-    "upper_bound_label": "upper bound on entropy",
+    "upper_bound_label": "entropy estimate",
     "col_num": "#",
     "col_word": "Word",
     "col_attempts": "Attempts",

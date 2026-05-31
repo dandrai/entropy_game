@@ -22,7 +22,7 @@
     "fail_word": "Mot\u00A0:",
     "next_word_btn": "Suivant\u00A0→",
     "results_title": "Résultats de la session",
-    "upper_bound_label": "borne supérieure de l'entropie",
+    "upper_bound_label": "estimation de l'entropie",
     "col_num": "#",
     "col_word": "Mot",
     "col_attempts": "Essais",
